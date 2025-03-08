@@ -3,6 +3,8 @@ import yfinance as yf
 import pandas as pd
 import plotly.graph_objects as go
 from prophet import Prophet
+from sklearn.metrics import mean_squared_error
+import numpy as np
 
 # Streamlit App Title
 st.title("📈 Stock Analysis & Prediction System")
@@ -52,34 +54,40 @@ if st.button("Fetch Data"):
         st.plotly_chart(fig, use_container_width=True)
 
         # -----------------
-        # 📌 Prophet Model for Forecasting (Fixed Version)
+        # 📌 Prophet Model for Forecasting + Accuracy Evaluation
         # -----------------
         st.subheader("📈 Stock Price Prediction (Prophet Model)")
 
         # Prepare Data for Prophet
         df_prophet = stock_data.reset_index()[["Date", "Close"]]
-        df_prophet.columns = ["ds", "y"]  # Prophet expects "ds" (date) and "y" (value)
+        df_prophet.columns = ["ds", "y"]
 
         # Fix: Remove Timezone from Date
         df_prophet["ds"] = pd.to_datetime(df_prophet["ds"]).dt.tz_localize(None)
 
-        # Fix: Remove missing values
+        # Remove missing values
         df_prophet = df_prophet.dropna()
 
-        # Fix: Ensure "y" column is numeric
+        # Ensure "y" column is numeric
         df_prophet = df_prophet[df_prophet["y"].apply(lambda x: isinstance(x, (int, float)))]
 
-        # Check if data is valid for Prophet
         if len(df_prophet) < 10:
             st.error("Not enough data for prediction. Try another stock.")
         else:
-            # Train Prophet Model
-            model = Prophet()
+            # Train Prophet Model with Fine-Tuning
+            model = Prophet(seasonality_mode="multiplicative", changepoint_prior_scale=0.05, seasonality_prior_scale=10)
             model.fit(df_prophet)
 
             # Predict for next 180 days
-            future = model.make_future_dataframe(periods=180)  # Forecast for 6 months
+            future = model.make_future_dataframe(periods=180)
             forecast = model.predict(future)
+
+            # Calculate RMSE (Root Mean Squared Error)
+            actual_values = df_prophet["y"][-90:]  # Last 90 days of actual data
+            predicted_values = forecast["yhat"][-90:].values  # Last 90 days of predicted values
+
+            rmse = np.sqrt(mean_squared_error(actual_values, predicted_values))
+            st.subheader(f"📊 Model Accuracy: RMSE = {rmse:.2f}")
 
             # Plot Forecast
             fig_forecast = go.Figure()
@@ -98,5 +106,3 @@ if st.button("Fetch Data"):
         st.error("Failed to retrieve stock data. Please check the ticker.")
 
 st.write("👆 Enter a stock ticker and click 'Fetch Data' to get started!")
-'''
-'''
