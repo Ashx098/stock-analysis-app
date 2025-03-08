@@ -49,7 +49,7 @@ else:
     df_scaled = scaler.fit_transform(df[['Close']])
 
     # Function to create sequences
-    def create_sequences(data, seq_length=60):
+    def create_sequences(data, seq_length=100):
         X, y = [], []
         for i in range(len(data) - seq_length):
             X.append(data[i:i+seq_length])
@@ -57,7 +57,7 @@ else:
         return np.array(X), np.array(y)
 
     # Prepare LSTM sequences
-    seq_length = 60
+    seq_length = 100  # 100 days sequence
     X, y = create_sequences(df_scaled, seq_length)
 
     # Train/Test Split (80-20)
@@ -99,7 +99,7 @@ else:
         scaler = st.session_state.scaler
 
     # **✅ Predict Future Prices**
-    future_days = 180  # Predict next 6 months
+    future_days = 15  # Predict next 15 days
     future_prices = []
 
     # Use last sequence for prediction
