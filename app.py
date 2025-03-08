@@ -8,8 +8,9 @@ from sklearn.preprocessing import MinMaxScaler
 import tensorflow as tf
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import LSTM, Dense, Dropout
+import os
 
-# Initialize session state for button clicks
+# Initialize session state to track if predictions are triggered
 if "predict_clicked" not in st.session_state:
     st.session_state.predict_clicked = False
 
@@ -81,22 +82,30 @@ if st.session_state.predict_clicked:
     X_train = X_train.reshape(X_train.shape[0], X_train.shape[1], 1)
     X_test = X_test.reshape(X_test.shape[0], X_test.shape[1], 1)
 
-    # Define LSTM Model
-    model = Sequential([
-        LSTM(50, return_sequences=True, input_shape=(seq_length, 1)),
-        Dropout(0.3),
-        LSTM(25, return_sequences=False),
-        Dropout(0.3),
-        Dense(25, activation="relu"),
-        Dense(1)
-    ])
+    # Check if model already exists in session state
+    if "lstm_model" not in st.session_state:
+        # Define LSTM Model
+        model = Sequential([
+            LSTM(50, return_sequences=True, input_shape=(seq_length, 1)),
+            Dropout(0.3),
+            LSTM(25, return_sequences=False),
+            Dropout(0.3),
+            Dense(25, activation="relu"),
+            Dense(1)
+        ])
 
-    # Compile Model
-    model.compile(optimizer="adam", loss="mean_squared_error")
+        # Compile Model
+        model.compile(optimizer="adam", loss="mean_squared_error")
 
-    # Train Model
-    with st.spinner("🚀 Training LSTM Model... Please wait"):
-        model.fit(X_train, y_train, epochs=20, batch_size=32, verbose=0)
+        # Train Model
+        with st.spinner("🚀 Training LSTM Model... Please wait"):
+            model.fit(X_train, y_train, epochs=20, batch_size=32, verbose=0)
+
+        # Save model in session state
+        st.session_state.lstm_model = model
+
+    else:
+        model = st.session_state.lstm_model  # Load model from session state
 
     # Predict Future Prices
     future_days = 180  # Predict next 6 months
