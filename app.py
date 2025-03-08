@@ -52,7 +52,7 @@ if st.button("Fetch Data"):
         st.plotly_chart(fig, use_container_width=True)
 
         # -----------------
-        # 📌 Prophet Model for Forecasting
+        # 📌 Prophet Model for Forecasting (Fixed Version)
         # -----------------
         st.subheader("📈 Stock Price Prediction (Prophet Model)")
 
@@ -60,26 +60,39 @@ if st.button("Fetch Data"):
         df_prophet = stock_data.reset_index()[["Date", "Close"]]
         df_prophet.columns = ["ds", "y"]  # Prophet expects columns as "ds" (date) and "y" (value)
 
-        # Train Prophet Model
-        model = Prophet()
-        model.fit(df_prophet)
+        # 🔹 Fix: Ensure date format is correct
+        df_prophet["ds"] = pd.to_datetime(df_prophet["ds"])
 
-        # Predict for next 180 days
-        future = model.make_future_dataframe(periods=180)  # Forecast for 6 months
-        forecast = model.predict(future)
+        # 🔹 Fix: Remove missing values
+        df_prophet = df_prophet.dropna()
 
-        # Plot Forecast
-        fig_forecast = go.Figure()
-        fig_forecast.add_trace(go.Scatter(x=forecast["ds"], y=forecast["yhat"], mode="lines", name="Predicted Price"))
-        fig_forecast.add_trace(go.Scatter(x=forecast["ds"], y=forecast["yhat_upper"], mode="lines", name="Upper Bound", line=dict(dash="dot")))
-        fig_forecast.add_trace(go.Scatter(x=forecast["ds"], y=forecast["yhat_lower"], mode="lines", name="Lower Bound", line=dict(dash="dot")))
+        # 🔹 Fix: Ensure "y" column is numeric
+        df_prophet = df_prophet[df_prophet["y"].apply(lambda x: isinstance(x, (int, float)))]
 
-        fig_forecast.update_layout(title=f"Stock Price Prediction for {stock_ticker.upper()}",
-                                   xaxis_title="Date",
-                                   yaxis_title="Predicted Price (USD)",
-                                   template="plotly_dark")
+        # Check if data is valid for Prophet
+        if len(df_prophet) < 10:
+            st.error("Not enough data for prediction. Try another stock.")
+        else:
+            # Train Prophet Model
+            model = Prophet()
+            model.fit(df_prophet)
 
-        st.plotly_chart(fig_forecast, use_container_width=True)
+            # Predict for next 180 days
+            future = model.make_future_dataframe(periods=180)  # Forecast for 6 months
+            forecast = model.predict(future)
+
+            # Plot Forecast
+            fig_forecast = go.Figure()
+            fig_forecast.add_trace(go.Scatter(x=forecast["ds"], y=forecast["yhat"], mode="lines", name="Predicted Price"))
+            fig_forecast.add_trace(go.Scatter(x=forecast["ds"], y=forecast["yhat_upper"], mode="lines", name="Upper Bound", line=dict(dash="dot")))
+            fig_forecast.add_trace(go.Scatter(x=forecast["ds"], y=forecast["yhat_lower"], mode="lines", name="Lower Bound", line=dict(dash="dot")))
+
+            fig_forecast.update_layout(title=f"Stock Price Prediction for {stock_ticker.upper()}",
+                                       xaxis_title="Date",
+                                       yaxis_title="Predicted Price (USD)",
+                                       template="plotly_dark")
+
+            st.plotly_chart(fig_forecast, use_container_width=True)
 
     else:
         st.error("Failed to retrieve stock data. Please check the ticker.")
