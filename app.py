@@ -98,29 +98,5 @@ if st.button("Fetch Data"):
         st.error("Failed to retrieve stock data. Please check the ticker.")
 
 st.write("👆 Enter a stock ticker and click 'Fetch Data' to get started!")
-  '''  
-    The code above is a Streamlit app that fetches stock data using the  yfinance  library, calculates moving averages, and displays an interactive chart using Plotly. It also uses the  Prophet  library to predict stock prices for the next 180 days. 
-    To run the Streamlit app, save the code to a file named  app.py  and run the following command in the terminal: 
-    streamlit run app.py
-    
-    This will start a local server and open the app in your default web browser. You can enter a stock ticker (e.g., AAPL, TSLA, NVDA) and click the "Fetch Data" button to see the stock data, moving averages, and price predictions. 
-    Conclusion 
-    In this tutorial, we learned how to use the  Prophet  library to forecast time series data in Python. We covered the key concepts behind Prophet and demonstrated how to use it to predict stock prices. 
-    Prophet is a powerful tool for time series forecasting and is particularly useful for business applications. It is easy to use and provides accurate predictions with minimal configuration. 
-    If you're interested in learning more about time series forecasting, check out the following resources: 
-    
-    How to Use ARIMA for Time Series Forecasting in Python
-    How to Use LSTM Networks for Time Series Forecasting
-    
-    To learn more about the Prophet library, visit the official documentation: 
-    
-    Prophet Documentation
-    
-    If you have any questions or thoughts to share, feel free to reach out in the comments below! 
-    About the authors 
-    
-    Ramesh Sannareddy 
-    Ramesh is a seasoned Data Scientist and ML Engineer with 15 years of experience in the tech industry. He has worked for global tech companies and founded  Data Science Dojo, a data science training company. 
-    
-    Taurai Mutimutema 
-    Taurai is a systems analyst with a knack for writing, which was probably sparked by the need to document technical processes during code and implementation sessions. He enjoys learning new technologies and solving programming problems. Taurai has a Bachelor of Science in Computer Science and is always looking for opportunities to put his skills into practice.'''
+'''
+'''
