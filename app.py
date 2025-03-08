@@ -10,52 +10,38 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import LSTM, Dense, Dropout
 import os
 
-# Initialize session state to track if predictions are triggered
-if "predict_clicked" not in st.session_state:
-    st.session_state.predict_clicked = False
-
 # Streamlit UI
 st.title("📈 Stock Analysis & Prediction System")
-st.write("Select a stock and click 'Fetch Data' to get started!")
+st.write("Select a stock to view trends and future predictions.")
 
 # List of top tech stocks
 tech_stocks = ["AAPL", "TSLA", "AMZN", "GOOGL", "MSFT", "NVDA"]
 selected_stock = st.selectbox("Select a Stock:", tech_stocks)
 
-if st.button("Fetch Data"):
-    st.session_state.predict_clicked = False  # Reset prediction state
-    st.write(f"Fetching stock data for {selected_stock}...")
+# Fetch Stock Data Automatically on Selection
+st.write(f"Fetching stock data for {selected_stock}...")
 
-    # Fetch stock data
-    stock = yf.Ticker(selected_stock)
-    df = stock.history(period="5y")
+# Fetch stock data
+stock = yf.Ticker(selected_stock)
+df = stock.history(period="5y")
 
-    if df.empty:
-        st.error("❌ Invalid Stock Ticker! Please choose a valid stock.")
-    else:
-        # Keep relevant columns
-        df = df[['Close']].dropna().reset_index()
+if df.empty:
+    st.error("❌ Invalid Stock Ticker! Please choose a valid stock.")
+else:
+    # Keep relevant columns
+    df = df[['Close']].dropna().reset_index()
 
-        # Display Data
-        st.subheader(f"{selected_stock} Historical Stock Data")
-        st.dataframe(df.tail(10))  # Show last 10 days
+    # Display Data
+    st.subheader(f"{selected_stock} Historical Stock Data")
+    st.dataframe(df.tail(10))  # Show last 10 days
 
-        # Plot Interactive Graph
-        st.subheader(f"{selected_stock} Stock Price Trend (Interactive)")
-        fig = px.line(df, x='Date', y='Close', title=f"{selected_stock} Stock Price Trend")
-        st.plotly_chart(fig)
+    # Plot Interactive Graph
+    st.subheader(f"{selected_stock} Stock Price Trend (Interactive)")
+    fig = px.line(df, x='Date', y='Close', title=f"{selected_stock} Stock Price Trend")
+    st.plotly_chart(fig)
 
-        # Future Prediction Button
-        if st.button("Predict Future Trend"):
-            st.session_state.predict_clicked = True  # Store button state
-
-# Run only if Predict Future Trend was clicked
-if st.session_state.predict_clicked:
+    # LSTM Model for Future Predictions
     st.subheader(f"🔮 Predicting Future Prices for {selected_stock}")
-
-    # Fetch stock data again (to persist after rerun)
-    stock = yf.Ticker(selected_stock)
-    df = stock.history(period="5y")[['Close']].dropna().reset_index()
 
     # Scale data
     scaler = MinMaxScaler(feature_range=(0,1))
@@ -103,7 +89,6 @@ if st.session_state.predict_clicked:
 
         # Save model in session state
         st.session_state.lstm_model = model
-
     else:
         model = st.session_state.lstm_model  # Load model from session state
 
