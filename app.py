@@ -12,7 +12,7 @@ from tensorflow.keras.optimizers import Adam
 from sklearn.metrics import mean_squared_error
 
 # Streamlit UI
-st.title("📈 Stock Analysis & Prediction System")
+st.title("\ud83d\udcc8 Stock Analysis & Prediction System")
 st.write("Select a stock to view trends and future predictions.")
 
 # List of top tech stocks
@@ -27,7 +27,7 @@ stock = yf.Ticker(selected_stock)
 df = stock.history(period="5y")
 
 if df.empty:
-    st.error("❌ Invalid Stock Ticker! Please choose a valid stock.")
+    st.error("\u274c Invalid Stock Ticker! Please choose a valid stock.")
 else:
     # Keep relevant columns
     df = df[['Close']].dropna().reset_index()
@@ -42,7 +42,7 @@ else:
     st.plotly_chart(fig)
 
     # LSTM Model for Future Predictions
-    st.subheader(f"🔮 Predicting Future Prices for {selected_stock}")
+    st.subheader(f"\ud83d\udd2e Predicting Future Prices for {selected_stock}")
 
     # Scale data
     scaler = MinMaxScaler(feature_range=(0,1))
@@ -57,7 +57,7 @@ else:
         return np.array(X), np.array(y)
 
     # Prepare LSTM sequences
-    seq_length = 100  # 100 days sequence
+    seq_length = 100  # Match Jupyter settings
     X, y = create_sequences(df_scaled, seq_length)
 
     # Train/Test Split (80-20)
@@ -71,38 +71,35 @@ else:
 
     # Check if model already exists in session state
     if "lstm_model" not in st.session_state:
-        # **✅ Define Optimized LSTM Model**
+        # Define Optimized LSTM Model
         model = Sequential([
             LSTM(50, return_sequences=True, input_shape=(seq_length, 1)),
-            Dropout(0.4),  # Increased Dropout
-            LSTM(25, return_sequences=False),  # Reduced Complexity
+            Dropout(0.4),
+            LSTM(25, return_sequences=False),
             Dropout(0.4),
             Dense(25, activation="relu"),
             Dense(1)
         ])
 
-        # **✅ Use Adam Optimizer with Learning Rate Decay**
+        # Use Adam Optimizer with Learning Rate Decay
         optimizer = Adam(learning_rate=0.001, decay=1e-6)
         model.compile(optimizer=optimizer, loss="mean_squared_error")
 
-        # **✅ Train Model**
-        with st.spinner("🚀 Training Optimized LSTM Model... Please wait"):
+        # Train Model
+        with st.spinner("\ud83d\ude80 Training Optimized LSTM Model... Please wait"):
             history = model.fit(X_train, y_train, epochs=30, batch_size=64, validation_data=(X_test, y_test), verbose=0)
 
-        # **Save model in session state**
+        # Save model in session state
         st.session_state.lstm_model = model
-        st.session_state.scaler = scaler  # Save scaler to reverse transformations
-        st.session_state.history = history  # Save training history
-
+        st.session_state.scaler = scaler
+        st.session_state.history = history
     else:
         model = st.session_state.lstm_model  # Load model from session state
         scaler = st.session_state.scaler
 
-    # **✅ Predict Future Prices**
-    future_days = 15  # Predict next 15 days
+    # Predict Future Prices (15-30 days only)
+    future_days = 30
     future_prices = []
-
-    # Use last sequence for prediction
     last_sequence = df_scaled[-seq_length:].reshape(1, seq_length, 1)
 
     for _ in range(future_days):
@@ -116,14 +113,13 @@ else:
     # Create future dates
     future_dates = pd.date_range(start=df['Date'].iloc[-1], periods=future_days+1, freq="D")[1:]
 
-    # **✅ Calculate RMSE**
+    # Calculate RMSE
     y_pred_rescaled = scaler.inverse_transform(model.predict(X_test))
     y_test_rescaled = scaler.inverse_transform(y_test.reshape(-1, 1))
     rmse = np.sqrt(mean_squared_error(y_test_rescaled, y_pred_rescaled))
+    st.write(f"\ud83d\udcca **Model Accuracy: RMSE = {rmse:.2f}**")
 
-    st.write(f"📊 **Model Accuracy: RMSE = {rmse:.2f}**")
-
-    # **✅ Plot Training & Validation Loss**
+    # Plot Training & Validation Loss
     if "history" in st.session_state:
         history = st.session_state.history
         plt.figure(figsize=(8,4))
@@ -133,7 +129,7 @@ else:
         plt.title("LSTM Training Loss (Optimized)")
         st.pyplot(plt)
 
-    # **✅ Plot Predictions**
+    # Plot Predictions
     plt.figure(figsize=(12,6))
     plt.plot(df['Date'], df['Close'], label="Historical Prices", color="blue")
     plt.plot(future_dates, future_prices_rescaled, label="Predicted Prices", color="red")
