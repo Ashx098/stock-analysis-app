@@ -1,108 +1,89 @@
 import streamlit as st
 import yfinance as yf
-import pandas as pd
-import plotly.graph_objects as go
-from prophet import Prophet
-from sklearn.metrics import mean_squared_error
 import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.preprocessing import MinMaxScaler
+import tensorflow as tf
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import LSTM, Dense, Dropout
 
-# Streamlit App Title
+# Streamlit UI
 st.title("📈 Stock Analysis & Prediction System")
+st.write("Enter a stock ticker and click 'Predict' to get started!")
 
-# User input for stock ticker
-stock_ticker = st.text_input("Enter Stock Ticker (e.g., AAPL, TSLA, NVDA):", "NVDA")
+# User input
+ticker = st.text_input("Enter Stock Ticker (e.g., AAPL, TSLA, NVDA):", "NVDA")
 
-# Function to fetch stock data
-def get_stock_data(ticker):
+if st.button("Predict Stock Price"):
+    st.write(f"Fetching stock data for {ticker}...")
+
+    # Fetch stock data
     stock = yf.Ticker(ticker)
-    df = stock.history(period="5y")  # Fetch last 5 years of data
-    return df
+    df = stock.history(period="5y")
 
-# Fetch data when button is clicked
-if st.button("Fetch Data"):
-    stock_data = get_stock_data(stock_ticker)
-
-    if not stock_data.empty:
-        st.subheader(f"Stock Data for {stock_ticker.upper()}")
-        st.write(stock_data.tail())  # Show last few rows
-        
-        # Calculate Moving Averages
-        stock_data["SMA_50"] = stock_data["Close"].rolling(window=50).mean()  # 50-day SMA
-        stock_data["EMA_20"] = stock_data["Close"].ewm(span=20, adjust=False).mean()  # 20-day EMA
-        
-        # Interactive Plotly Chart
-        st.subheader("📊 Stock Price Chart with Moving Averages")
-        fig = go.Figure()
-        
-        # Add Closing Price Line
-        fig.add_trace(go.Scatter(x=stock_data.index, y=stock_data["Close"], mode="lines", name="Closing Price"))
-        
-        # Add 50-day Simple Moving Average
-        fig.add_trace(go.Scatter(x=stock_data.index, y=stock_data["SMA_50"], mode="lines", name="50-day SMA", line=dict(dash="dash")))
-        
-        # Add 20-day Exponential Moving Average
-        fig.add_trace(go.Scatter(x=stock_data.index, y=stock_data["EMA_20"], mode="lines", name="20-day EMA", line=dict(dash="dot")))
-        
-        # Layout Settings
-        fig.update_layout(title=f"{stock_ticker.upper()} Price Chart",
-                          xaxis_title="Date",
-                          yaxis_title="Stock Price (USD)",
-                          legend_title="Legend",
-                          template="plotly_dark")
-        
-        # Display Chart in Streamlit
-        st.plotly_chart(fig, use_container_width=True)
-
-        # -----------------
-        # 📌 Prophet Model for Forecasting + Accuracy Evaluation
-        # -----------------
-        st.subheader("📈 Stock Price Prediction (Prophet Model)")
-
-        # Prepare Data for Prophet
-        df_prophet = stock_data.reset_index()[["Date", "Close"]]
-        df_prophet.columns = ["ds", "y"]
-
-        # Fix: Remove Timezone from Date
-        df_prophet["ds"] = pd.to_datetime(df_prophet["ds"]).dt.tz_localize(None)
-
-        # Remove missing values
-        df_prophet = df_prophet.dropna()
-
-        # Ensure "y" column is numeric
-        df_prophet = df_prophet[df_prophet["y"].apply(lambda x: isinstance(x, (int, float)))]
-
-        if len(df_prophet) < 10:
-            st.error("Not enough data for prediction. Try another stock.")
-        else:
-            # Train Prophet Model with Fine-Tuning
-            model = Prophet(seasonality_mode="multiplicative", changepoint_prior_scale=0.05, seasonality_prior_scale=10)
-            model.fit(df_prophet)
-
-            # Predict for next 180 days
-            future = model.make_future_dataframe(periods=180)
-            forecast = model.predict(future)
-
-            # Calculate RMSE (Root Mean Squared Error)
-            actual_values = df_prophet["y"][-90:]  # Last 90 days of actual data
-            predicted_values = forecast["yhat"][-90:].values  # Last 90 days of predicted values
-
-            rmse = np.sqrt(mean_squared_error(actual_values, predicted_values))
-            st.subheader(f"📊 Model Accuracy: RMSE = {rmse:.2f}")
-
-            # Plot Forecast
-            fig_forecast = go.Figure()
-            fig_forecast.add_trace(go.Scatter(x=forecast["ds"], y=forecast["yhat"], mode="lines", name="Predicted Price"))
-            fig_forecast.add_trace(go.Scatter(x=forecast["ds"], y=forecast["yhat_upper"], mode="lines", name="Upper Bound", line=dict(dash="dot")))
-            fig_forecast.add_trace(go.Scatter(x=forecast["ds"], y=forecast["yhat_lower"], mode="lines", name="Lower Bound", line=dict(dash="dot")))
-
-            fig_forecast.update_layout(title=f"Stock Price Prediction for {stock_ticker.upper()}",
-                                       xaxis_title="Date",
-                                       yaxis_title="Predicted Price (USD)",
-                                       template="plotly_dark")
-
-            st.plotly_chart(fig_forecast, use_container_width=True)
-
+    if df.empty:
+        st.error("❌ Invalid Stock Ticker! Please enter a valid stock symbol.")
     else:
-        st.error("Failed to retrieve stock data. Please check the ticker.")
+        # Keep only the 'Close' column
+        df = df[['Close']].dropna()
+        
+        # Scale the data
+        scaler = MinMaxScaler(feature_range=(0,1))
+        df_scaled = scaler.fit_transform(df)
 
-st.write("👆 Enter a stock ticker and click 'Fetch Data' to get started!")
+        # Create sequences for LSTM
+        def create_sequences(data, seq_length=60):
+            X, y = [], []
+            for i in range(len(data) - seq_length):
+                X.append(data[i:i+seq_length])
+                y.append(data[i+seq_length])
+            return np.array(X), np.array(y)
+
+        seq_length = 60
+        X, y = create_sequences(df_scaled, seq_length)
+
+        # Split into train & test sets (80% train, 20% test)
+        split = int(len(X) * 0.8)
+        X_train, X_test = X[:split], X[split:]
+        y_train, y_test = y[:split], y[split:]
+
+        # Reshape for LSTM
+        X_train = X_train.reshape(X_train.shape[0], X_train.shape[1], 1)
+        X_test = X_test.reshape(X_test.shape[0], X_test.shape[1], 1)
+
+        # Define LSTM Model
+        model = Sequential([
+            LSTM(50, return_sequences=True, input_shape=(seq_length, 1)),
+            Dropout(0.3),
+            LSTM(25, return_sequences=False),
+            Dropout(0.3),
+            Dense(25, activation="relu"),
+            Dense(1)
+        ])
+
+        # Compile Model
+        model.compile(optimizer="adam", loss="mean_squared_error")
+
+        # Train Model
+        with st.spinner("Training LSTM Model..."):
+            model.fit(X_train, y_train, epochs=20, batch_size=32, verbose=0)
+
+        # Make Predictions
+        y_pred = model.predict(X_test)
+        y_pred_rescaled = scaler.inverse_transform(y_pred)
+        y_test_rescaled = scaler.inverse_transform(y_test.reshape(-1, 1))
+
+        # Calculate RMSE
+        from sklearn.metrics import mean_squared_error
+        rmse = np.sqrt(mean_squared_error(y_test_rescaled, y_pred_rescaled))
+
+        st.write(f"📊 **Model Accuracy: RMSE = {rmse:.2f}**")
+
+        # Plot Predictions
+        plt.figure(figsize=(12,6))
+        plt.plot(y_test_rescaled, label="Actual Stock Price", color="blue")
+        plt.plot(y_pred_rescaled, label="Predicted Stock Price", color="red")
+        plt.legend()
+        plt.title(f"{ticker} Stock Price Prediction (LSTM)")
+        st.pyplot(plt)
