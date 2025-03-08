@@ -2,6 +2,7 @@ import streamlit as st
 import yfinance as yf
 import pandas as pd
 import plotly.graph_objects as go
+from prophet import Prophet
 
 # Streamlit App Title
 st.title("📈 Stock Analysis & Prediction System")
@@ -49,6 +50,36 @@ if st.button("Fetch Data"):
         
         # Display Chart in Streamlit
         st.plotly_chart(fig, use_container_width=True)
+
+        # -----------------
+        # 📌 Prophet Model for Forecasting
+        # -----------------
+        st.subheader("📈 Stock Price Prediction (Prophet Model)")
+
+        # Prepare Data for Prophet
+        df_prophet = stock_data.reset_index()[["Date", "Close"]]
+        df_prophet.columns = ["ds", "y"]  # Prophet expects columns as "ds" (date) and "y" (value)
+
+        # Train Prophet Model
+        model = Prophet()
+        model.fit(df_prophet)
+
+        # Predict for next 180 days
+        future = model.make_future_dataframe(periods=180)  # Forecast for 6 months
+        forecast = model.predict(future)
+
+        # Plot Forecast
+        fig_forecast = go.Figure()
+        fig_forecast.add_trace(go.Scatter(x=forecast["ds"], y=forecast["yhat"], mode="lines", name="Predicted Price"))
+        fig_forecast.add_trace(go.Scatter(x=forecast["ds"], y=forecast["yhat_upper"], mode="lines", name="Upper Bound", line=dict(dash="dot")))
+        fig_forecast.add_trace(go.Scatter(x=forecast["ds"], y=forecast["yhat_lower"], mode="lines", name="Lower Bound", line=dict(dash="dot")))
+
+        fig_forecast.update_layout(title=f"Stock Price Prediction for {stock_ticker.upper()}",
+                                   xaxis_title="Date",
+                                   yaxis_title="Predicted Price (USD)",
+                                   template="plotly_dark")
+
+        st.plotly_chart(fig_forecast, use_container_width=True)
 
     else:
         st.error("Failed to retrieve stock data. Please check the ticker.")
