@@ -2,4 +2,11 @@ streamlit
 yfinance
 pandas
 numpy
+matplotlib
 plotly
+prophet
+scikit-learn
+tensorflow
+beautifulsoup4
+requests
+lxml
